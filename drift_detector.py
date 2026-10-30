@@ -118,8 +118,10 @@ def detect_drift():
                 INSERT INTO public.drift_events
                     (signal, score, threshold, action_taken)
                 VALUES (%s, %s, %s, %s)
+                    RETURNING id
+
             """, (signal, drift_score, THRESHOLD, action))
-    event_id = cursor.fetchone()[0]
+            event_id = cursor.fetchone()[0]
     print(f"Baseline size: {len(baseline)}")
     print(f"Baseline interaction IDs: {interaction_ids[0]}–{interaction_ids[BASELINE_SIZE - 1]}")
     print(f"Recent size: {len(recent)}")
@@ -128,7 +130,6 @@ def detect_drift():
     print(f"Drift score: {drift_score:.4f}")
     print(f"Threshold: {THRESHOLD:.4f}")
     print(f"Drift detected: {drift_detected}")
-    print(f"Event saved: {action}")
 
     print(f"Event saved: {action}")
     return event_id, action

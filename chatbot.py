@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from db import get_connection
 from embedding_service import generate_embedding
+from toxicity_classifier import classify_toxicity
 
 load_dotenv()
 
@@ -20,7 +21,7 @@ client = OpenAI(
 
 
 def is_refusal(response_text):
-    """Basic heuristic for detecting likely refusals."""
+    """Heuristic detection of common refusal wording."""
     phrases = [
         "i cannot help with that",
         "i can't help with that",
@@ -28,7 +29,16 @@ def is_refusal(response_text):
         "i'm unable to help with that",
         "i cannot assist with that",
         "i can't assist with that",
+        "i'm not able to provide that",
+        "i am not able to provide that",
+        "i cannot provide that",
+        "i can't provide that",
+        "i'm sorry, but i cannot",
+        "i'm sorry, but i can't",
+        "i cannot comply with that request",
+        "i can't comply with that request",
     ]
+
     text = response_text.lower()
     return any(phrase in text for phrase in phrases)
 
@@ -44,7 +54,10 @@ def ask_chatbot(user_query):
     input_tokens = usage.prompt_tokens if usage else None
     output_tokens = usage.completion_tokens if usage else None
     cost_usd = 0.0  # Placeholder, not verified billing data
+
     refusal_flag = is_refusal(answer)
+    toxicity_result = classify_toxicity(answer)
+    toxicity_flag = toxicity_result["toxicity_flag"]
 
     # Generate an embedding for the user's query.
     embedding = generate_embedding(user_query)
@@ -57,14 +70,15 @@ def ask_chatbot(user_query):
                 """
                 INSERT INTO public.interaction_log
                     (user_query, model_response, refusal_flag,
-                     input_tokens, output_tokens, cost_usd)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                     toxicity_flag, input_tokens, output_tokens, cost_usd)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
                     user_query,
                     answer,
                     refusal_flag,
+                    toxicity_flag,
                     input_tokens,
                     output_tokens,
                     cost_usd,
@@ -74,14 +88,20 @@ def ask_chatbot(user_query):
 
             cursor.execute(
                 """
-               INSERT INTO public.embeddings_log
-    (embedding, type, interaction_id)
-VALUES (%s::vector, %s, %s)
+                INSERT INTO public.embeddings_log
+                    (embedding, type, interaction_id)
+                VALUES (%s::vector, %s, %s)
                 """,
-(vector_string, "query", interaction_id),            )
+                (vector_string, "query", interaction_id),
+            )
 
     print(f"Interaction ID: {interaction_id}")
-    print("Query embedding saved to Supabase.")
+    print(f"Refusal flag: {refusal_flag}")
+    print(
+        f"Toxicity score: {toxicity_result['toxicity_score']:.4f}"
+    )
+    print(f"Toxicity flag: {toxicity_flag}")
+    print("Interaction and query embedding saved to Supabase.")
 
     return answer
 

@@ -1,4 +1,4 @@
-
+from behavior_alerts import check_behavior_alerts
 from db import get_connection
 from drift_detector import detect_drift
 from compare_models import (
@@ -48,6 +48,15 @@ def record_decision(event_id, status, details):
 
 def run_pipeline():
     print("\n=== Drift-Aware Pipeline ===")
+        # Check behavioral signals before processing drift events.
+    behavior = check_behavior_alerts()
+
+    print("\n=== Behavior Check ===")
+    print(f"Status: {behavior['status']}")
+    print(behavior["details"])
+
+    for alert in behavior["alerts"]:
+        print(f"ALERT: {alert}")
 
     # First, record decisions for any existing unprocessed events.
     event = get_unprocessed_event()
