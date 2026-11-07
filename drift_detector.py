@@ -1,6 +1,7 @@
 
 import numpy as np
 from db import get_connection
+from metrics import record_drift_event
 
 THRESHOLD = 0.15
 BASELINE_SIZE = 20
@@ -111,6 +112,10 @@ def detect_drift():
     drift_score = 1.0 - similarity
     drift_detected = drift_score > THRESHOLD
     action = "drift_detected" if drift_detected else "no_drift"
+    record_drift_event(
+    signal="embedding_drift",
+    score=drift_score,
+)
 
     with get_connection() as connection:
         with connection.cursor() as cursor:

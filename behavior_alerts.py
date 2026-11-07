@@ -4,10 +4,12 @@ from behavior_monitor import (
     MAX_REFUSAL_RATE,
     MAX_TOXICITY_RATE,
 )
-from db import get_connection
+from metrics import set_active_behavior_alerts
+
 
 def check_behavior_alerts():
     """Return alerts for elevated refusal or toxicity rates."""
+
     results = get_behavior_rates()
     recent = results.get("recent")
 
@@ -42,6 +44,9 @@ def check_behavior_alerts():
             f"{recent['toxicity_rate']:.1%}"
         )
 
+    # Update Prometheus with the number of detected alerts.
+    set_active_behavior_alerts(len(alerts))
+
     return {
         "status": "alert" if alerts else "normal",
         "alerts": alerts,
@@ -53,6 +58,7 @@ def check_behavior_alerts():
 
 if __name__ == "__main__":
     result = check_behavior_alerts()
+
     print("=== Behavior Alert Check ===")
     print(f"Status: {result['status']}")
     print(result["details"])

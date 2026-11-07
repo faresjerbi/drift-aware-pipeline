@@ -105,7 +105,12 @@ def evaluate_model():
     print(f"Passed: {passed}/{total}")
     print(f"Evaluation score: {score:.1f}%")
 
-    return score
+    return {
+    "model_name": MODEL,
+    "score": score,
+    "passed_tests": passed,
+    "total_tests": total,
+}
 
 
 if __name__ == "__main__":
